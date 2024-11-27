@@ -1,0 +1,33 @@
+sudo chmod 777 /var/run/docker.sock
+
+./network.sh up createChannel -ca -c mychannel -s couchdb
+
+./network.sh deployCC -ccn san-overall -ccp chaincode/cred-overall-3 -ccl javascript
+
+export FABRIC_CFG_PATH=/home/kowshik/fabric-samples/test-network/configtx
+
+export CORE_PEER_TLS_ENABLED=true
+export CORE_PEER_LOCALMSPID=Org1MSP
+export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+export CORE_PEER_ADDRESS=localhost:7051
+
+
+peer chaincode query -C mychannel -n cred-overall-3 -c '{"Args":["GetAllElements"]}'
+
+
+peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n san-overall --peerAddresses localhost:7051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" --peerAddresses localhost:9051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" -c '{"function":"Register","Args":["DDO-ID-1", "0xefa1274d613caf01f80062bb2427a51addwi7w9", "ba3cfc950eec3a3119b9f607a477d0b71f0b256ab0ddc741a95889f85139abf9", "0xd5e6845edc906cce5583c101aa5cdbabf93feb17"]}'
+
+peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n san-overall --peerAddresses localhost:7051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" --peerAddresses localhost:9051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" -c '{"function":"Register","Args":["DDO-ID-2", "0xwqa1274d613caf01f80062bb2427a51addwi4t7", "3e80adbddd62625d205f51dab85038d7e592b217dec5addee4d9eb308f943347", "0x8adaa57071815974bdd5cc304579a07ccb59e774"]}'
+
+peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n san-overall --peerAddresses localhost:7051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" --peerAddresses localhost:9051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" -c '{"function":"addIssuer","Args":["Issuer-ID-1", "0xefa1274d613caf01f8879bb2427a51addwiwqP", "ec856f7043c3c9dba9a9d843487a1f76d1170e6d96a0023d1c330529a06e4538","0x52183eb5f7e75af0ff864c3c76ead30ed1357e80","2a06a9e4fa9899db2a85aefd6bcdba0ae7a2be4ab09c74edf0be86a30f38a5e1"]}'
+
+
+peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n san-overall --peerAddresses localhost:7051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" --peerAddresses localhost:9051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" -c '{"function":"createCredential","Args":["Cred-ID-1", "Issuer-ID-1", "DDO-ID-1", "{\"resource\":\"Resource\",\"rights\":\"Access Rights\"}", "1720931474969-jowgosqojas"]}'
+
+
+peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n san-overall --peerAddresses localhost:7051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" --peerAddresses localhost:9051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" -c '{"function":"delegateRights","Args":["Cred-ID-1", "{ \"delegationChain\": [{ \"user\": \"DDO-ID-2\", \"rights\": \"read\" }] }","DDO-ID-2", "8921031674969-aowgosqokut"]}'
+
+
+peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n san-overall --peerAddresses localhost:7051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" --peerAddresses localhost:9051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" -c '{"function":"verifyCredential","Args":["Cred-ID-1","DDO-ID-2", "Issuer-ID-1"]}'
+
