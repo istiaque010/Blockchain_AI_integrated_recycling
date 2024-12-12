@@ -6,48 +6,56 @@ const crypto = require("crypto");
 class VehicleLifecycleContract extends Contract {
 
     async InitLedger(ctx) {
-        const vehicles = [
-            {
-                vehicleDidNo: 'vehicle_001',
-                manufacturerDidNo: 'manufacturer_001',
-                partSupplierDidNo: 'supplier_001',
-                consumerDidNo: 'consumer_001',
-                dealerDidNo: 'dealer_001',
-                recyclingFacilityDidNo: '',
-                status: 'Manufactured',
-                complianceStatus: 'Pending',
-                controllerId: 'controller_001', // Controller ID for hash generation
-                parts: [
-                    {
-                        partDidNo: 'battery_001',
-                        partType: 'Battery',
-                        unitId: 'unit_battery_001', // Unique unit ID for each part
-                        expireDate: '2025-12-31',
-                        currentStatus: 'Operational',
-                        replacementHistory: []
-                    },
-                    {
-                        partDidNo: 'engine_001',
-                        partType: 'Engine',
-                        unitId: 'unit_engine_001', // Unique unit ID for each part
-                        expireDate: '2030-12-31',
-                        currentStatus: 'Operational',
-                        replacementHistory: []
-                    }
-                ],
-                tokens: 0,
-                reputation: 0,
-                referenceHash: '' // Placeholder for hash
-            }
-        ];
-
-        for (const vehicle of vehicles) {
-            // Generate initial hash for parts in the vehicle
-            vehicle.referenceHash = this.calculateHash(vehicle.parts.map(p => p.unitId));
-            await ctx.stub.putState(vehicle.vehicleDidNo, Buffer.from(JSON.stringify(vehicle)));
+    const vehicles = [
+        {
+            vehicleDidNo: 'vehicle_001',
+            manufacturerDidNo: 'manufacturer_001',
+            partSupplierDidNo: 'supplier_001',
+            consumerDidNo: 'consumer_001',
+            dealerDidNo: 'dealer_001',
+            recyclingFacilityDidNo: '',
+            status: 'Manufactured',
+            complianceStatus: 'Pending',
+            controllerId: 'controller_001',
+            parts: [
+                {
+                    partDidNo: 'battery_001',
+                    partType: 'Battery',
+                    unitId: 'unit_battery_001',
+                    expireDate: '2025-12-31',
+                    currentStatus: 'Operational',
+                    degradationRate: 0,
+                    replacementHistory: [],
+                    materials: [
+                        { material: 'Lithium', percentage: 40 },
+                        { material: 'Nickel', percentage: 30 },
+                        { material: 'Cobalt', percentage: 20 },
+                        { material: 'Manganese', percentage: 10 }
+                    ]
+                },
+                {
+                    partDidNo: 'engine_001',
+                    partType: 'Engine',
+                    unitId: 'unit_engine_001',
+                    expireDate: '2030-12-31',
+                    currentStatus: 'Operational',
+                    degradationRate: 0,
+                    replacementHistory: []
+                }
+            ],
+            tokens: 0,
+            reputation: 0,
+            referenceHash: ''
         }
-        console.info('Ledger Initialized with dummy vehicles.');
+    ];
+
+    for (const vehicle of vehicles) {
+        vehicle.referenceHash = this.calculateHash(vehicle.parts.map(p => p.unitId));
+        await ctx.stub.putState(vehicle.vehicleDidNo, Buffer.from(JSON.stringify(vehicle)));
     }
+    console.info('Ledger Initialized with dummy vehicles.');
+}
+
 
     // Helper function to calculate hash from part IDs
     calculateHash(unitIds) {
@@ -55,31 +63,54 @@ class VehicleLifecycleContract extends Contract {
         return crypto.createHash("sha256").update(combinedString).digest("hex");
     }
 
-    // Register a new vehicle by manufacturer with unitId support
-    async RegisterVehicle(ctx, vehicleDidNo, manufacturerDidNo, partSupplierDidNo, dealerDidNo, parts) {
-        const parsedParts = JSON.parse(parts);
-        const unitIds = parsedParts.map(part => part.unitId); // Collect all unit IDs
-
-        const vehicle = {
-            vehicleDidNo,
-            manufacturerDidNo,
-            partSupplierDidNo,
-            consumerDidNo: '',
-            dealerDidNo,
-            recyclingFacilityDidNo: '',
-            status: 'Manufactured',
-            complianceStatus: 'Pending',
-            controllerId: `controller_${vehicleDidNo}`, // Generate a controller ID
-            parts: parsedParts,
-            tokens: 0,
-            reputation: 0,
-            referenceHash: this.calculateHash(unitIds) // Store initial hash
-        };
-        
-        await ctx.stub.putState(vehicleDidNo, Buffer.from(JSON.stringify(vehicle)));
-        return JSON.stringify(vehicle);
+    // Helper function to auto-calculate degradation rate
+    calculateDegradationRate(expireDate) {
+        const today = new Date();
+        const expiry = new Date(expireDate);
+        const timeDiff = expiry - today;
+        const totalLifespan = expiry - (new Date(expiry.getFullYear() - 10, expiry.getMonth(), expiry.getDate())); // Assume 10-year lifespan
+        return ((totalLifespan - timeDiff) / totalLifespan) * 100;
     }
-    
+
+    // Register a new vehicle by manufacturer with unitId support
+   async RegisterVehicle(ctx, vehicleDidNo, manufacturerDidNo, partSupplierDidNo, dealerDidNo, parts) {
+    const parsedParts = JSON.parse(parts);
+    const unitIds = parsedParts.map(part => part.unitId); // Collect all unit IDs
+
+    // Auto-calculate degradation rates for parts and initialize materials for battery parts
+    parsedParts.forEach(part => {
+        part.degradationRate = this.calculateDegradationRate(part.expireDate);
+        if (part.partType === 'Battery') {
+            part.materials = [
+                { material: 'Lithium', percentage: 40 },
+                { material: 'Nickel', percentage: 30 },
+                { material: 'Cobalt', percentage: 20 },
+                { material: 'Manganese', percentage: 10 }
+            ];
+        }
+    });
+
+    const vehicle = {
+        vehicleDidNo,
+        manufacturerDidNo,
+        partSupplierDidNo,
+        consumerDidNo: '',
+        dealerDidNo,
+        recyclingFacilityDidNo: '',
+        status: 'Manufactured',
+        complianceStatus: 'Pending',
+        controllerId: `controller_${vehicleDidNo}`, // Generate a controller ID
+        parts: parsedParts,
+        tokens: 0,
+        reputation: 0,
+        referenceHash: this.calculateHash(unitIds) // Store initial hash
+    };
+
+    await ctx.stub.putState(vehicleDidNo, Buffer.from(JSON.stringify(vehicle)));
+    return JSON.stringify(vehicle);
+}
+
+
     // Update vehicle compliance status
     async UpdateCompliance(ctx, vehicleDidNo, complianceStatus) {
         const vehicleAsBytes = await ctx.stub.getState(vehicleDidNo);
@@ -93,17 +124,38 @@ class VehicleLifecycleContract extends Contract {
     }
 
     // Report vehicle recycling and disposal
-    async ReportRecycling(ctx, vehicleDidNo, recyclingFacilityDidNo) {
-        const vehicleAsBytes = await ctx.stub.getState(vehicleDidNo);
-        if (!vehicleAsBytes || vehicleAsBytes.length === 0) {
-            throw new Error(`${vehicleDidNo} does not exist`);
-        }
-        const vehicle = JSON.parse(vehicleAsBytes.toString());
-        vehicle.recyclingFacilityDidNo = recyclingFacilityDidNo;
-        vehicle.status = 'Recycled';
-        await ctx.stub.putState(vehicleDidNo, Buffer.from(JSON.stringify(vehicle)));
-        return JSON.stringify(vehicle);
+   async ReportRecycling(ctx, vehicleDidNo, recyclingFacilityDidNo) {
+    const vehicleAsBytes = await ctx.stub.getState(vehicleDidNo);
+    if (!vehicleAsBytes || vehicleAsBytes.length === 0) {
+        throw new Error(`${vehicleDidNo} does not exist`);
     }
+    const vehicle = JSON.parse(vehicleAsBytes.toString());
+    vehicle.recyclingFacilityDidNo = recyclingFacilityDidNo;
+    vehicle.status = 'Recycled';
+
+    // Auto-calculate recycling purity, material recovered, and carbon savings
+    vehicle.parts.forEach(part => {
+        if (part.partType === 'Battery') {
+            part.materials.forEach(material => {
+                const purityLevel = Math.random() * 100; // Random purity for example
+                material.purity = purityLevel; // Track purity for the material
+                material.recoveredPercentage = (purityLevel / 100) * material.percentage;
+            });
+        }
+    });
+
+    vehicle.parts.forEach(part => {
+        if (part.partType === 'Battery') {
+            part.recyclingPurity = part.materials.reduce((acc, mat) => acc + mat.purity, 0) / part.materials.length;
+            part.materialRecovered = part.materials.reduce((acc, mat) => acc + mat.recoveredPercentage, 0);
+            part.carbonSavings = part.materialRecovered * 2; // Example: 2 units of carbon savings per material unit
+        }
+    });
+
+    await ctx.stub.putState(vehicleDidNo, Buffer.from(JSON.stringify(vehicle)));
+    return JSON.stringify(vehicle);
+}
+
 
     // Record vehicle sale to consumer
     async SellVehicle(ctx, vehicleDidNo, consumerDidNo) {
@@ -145,10 +197,10 @@ class VehicleLifecycleContract extends Contract {
         if (!vehicleAsBytes || vehicleAsBytes.length === 0) {
             throw new Error(`${vehicleDidNo} does not exist`);
         }
-        
+
         const vehicle = JSON.parse(vehicleAsBytes.toString());
         const part = vehicle.parts.find(p => p.partDidNo === partDidNo);
-        
+
         if (!part) {
             throw new Error(`Part ${partDidNo} does not exist on vehicle ${vehicleDidNo}`);
         }
@@ -161,21 +213,22 @@ class VehicleLifecycleContract extends Contract {
         part.expireDate = newExpireDate;
         part.currentStatus = 'Replaced';
 
-        // Recalculate hash after replacement
+        // Recalculate degradation rate and hash after replacement
+        part.degradationRate = this.calculateDegradationRate(newExpireDate);
         const unitIds = vehicle.parts.map(p => p.unitId);
         vehicle.referenceHash = this.calculateHash(unitIds);
 
         await ctx.stub.putState(vehicleDidNo, Buffer.from(JSON.stringify(vehicle)));
         return JSON.stringify(vehicle);
     }
-    
-     // Verify unit integrity by checking hash with reference hash
+
+    // Verify unit integrity by checking hash with reference hash
     async VerifyUnitIntegrity(ctx, vehicleDidNo) {
         const vehicleAsBytes = await ctx.stub.getState(vehicleDidNo);
         if (!vehicleAsBytes || vehicleAsBytes.length === 0) {
             throw new Error(`${vehicleDidNo} does not exist`);
         }
-        
+
         const vehicle = JSON.parse(vehicleAsBytes.toString());
         const unitIds = vehicle.parts.map(p => p.unitId); // Get unit IDs
         const currentHash = this.calculateHash(unitIds);
@@ -193,7 +246,7 @@ class VehicleLifecycleContract extends Contract {
         }
     }
 
-    // Update the unit'/s reference hash on blockchain after verified modifications
+    // Update the unit's reference hash on blockchain after verified modifications
     async UpdateUnitHash(ctx, vehicleDidNo) {
         const vehicleAsBytes = await ctx.stub.getState(vehicleDidNo);
         if (!vehicleAsBytes || vehicleAsBytes.length === 0) {
@@ -210,7 +263,8 @@ class VehicleLifecycleContract extends Contract {
             newHash: vehicle.referenceHash
         };
     }
- // Update part status
+
+    // Update part status
     async UpdatePartStatus(ctx, vehicleDidNo, partDidNo, status) {
         const vehicleAsBytes = await ctx.stub.getState(vehicleDidNo);
         if (!vehicleAsBytes || vehicleAsBytes.length === 0) {
@@ -229,47 +283,54 @@ class VehicleLifecycleContract extends Contract {
         return JSON.stringify(vehicle);
     }
 
-     // Add token reward to recycler based on recycling quality
-     async RewardRecycler(ctx, vehicleDidNo, recyclingFacilityDidNo, purityLevel) {
-        const vehicleAsBytes = await ctx.stub.getState(vehicleDidNo);
-        if (!vehicleAsBytes || vehicleAsBytes.length === 0) {
-            throw new Error(`${vehicleDidNo} does not exist`);
-        }
-
-        const vehicle = JSON.parse(vehicleAsBytes.toString());
-        vehicle.recyclingFacilityDidNo = recyclingFacilityDidNo;
-
-        // Determine reward based on purity level (e.g., higher purity = more tokens)
-        let tokensEarned = 0;
-        let reputationIncrease = 0;
-
-        if (purityLevel >= 95) {
-            tokensEarned = 50;
-            reputationIncrease = 10;
-        } else if (purityLevel >= 80) {
-            tokensEarned = 30;
-            reputationIncrease = 5;
-        } else if (purityLevel >= 60) {
-            tokensEarned = 15;
-            reputationIncrease = 2;
-        } else {
-            tokensEarned = 5;
-            reputationIncrease = 1;
-        }
-
-        vehicle.tokens += tokensEarned;
-        vehicle.reputation += reputationIncrease;
-
-        vehicle.status = 'Recycled';
-        await ctx.stub.putState(vehicleDidNo, Buffer.from(JSON.stringify(vehicle)));
-
-        return {
-            message: `Recycler rewarded with ${tokensEarned} tokens for purity level of ${purityLevel}%`,
-            vehicleDidNo: vehicle.vehicleDidNo,
-            tokens: vehicle.tokens,
-            reputation: vehicle.reputation
-        };
+    // Add token reward to recycler based on recycling quality
+    async RewardRecycler(ctx, vehicleDidNo, recyclingFacilityDidNo) {
+    const vehicleAsBytes = await ctx.stub.getState(vehicleDidNo);
+    if (!vehicleAsBytes || vehicleAsBytes.length === 0) {
+        throw new Error(`${vehicleDidNo} does not exist`);
     }
+
+    const vehicle = JSON.parse(vehicleAsBytes.toString());
+    vehicle.recyclingFacilityDidNo = recyclingFacilityDidNo;
+
+    let totalPurityLevel = 0;
+    let tokensEarned = 0;
+    let reputationIncrease = 0;
+
+    // Calculate total purity level from all battery materials
+    vehicle.parts.forEach(part => {
+        if (part.partType === 'Battery') {
+            totalPurityLevel += part.materials.reduce((acc, mat) => acc + mat.purity, 0);
+        }
+    });
+
+    const averagePurityLevel = totalPurityLevel / vehicle.parts.length;
+
+    if (averagePurityLevel >= 95) {
+        tokensEarned = 50;
+        reputationIncrease = 10;
+    } else if (averagePurityLevel >= 80) {
+        tokensEarned = 30;
+        reputationIncrease = 5;
+    } else if (averagePurityLevel >= 60) {
+        tokensEarned = 15;
+        reputationIncrease = 2;
+    } else {
+        tokensEarned = 5;
+        reputationIncrease = 1;
+    }
+
+    vehicle.tokens += tokensEarned;
+    vehicle.reputation += reputationIncrease;
+
+    vehicle.status = 'Recycled';
+    await ctx.stub.putState(vehicleDidNo, Buffer.from(JSON.stringify(vehicle)));
+
+    return {
+        message: `Recycler rewarded with ${tokensEarned} tokens and ${reputationIncrease} reputation points for recycling vehicle ${vehicleDidNo}.`,
+        vehicle: vehicle
+    };
+}
 
     // Redeem tokens for rewards (e.g., higher-value goods or services)
     async RedeemTokens(ctx, vehicleDidNo, tokensToRedeem) {
