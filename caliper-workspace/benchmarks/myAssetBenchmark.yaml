@@ -3,16 +3,16 @@ test:
   name: basic-contract-benchmark
   rounds:
   - description: Add DID benchmark
-    label: verifyCred
+    label: RewardRecycler
     rateControl:
       opts:
-        tps: 10
+        tps: 50
       type: fixed-rate
-    txNumber: 5
+    txNumber: 100
     workload:
       arguments:
         assets: 128
         contractId: san-overall
-      module: workload/verifyCred.js
+      module: workload/RewardRecycler.js
   workers:
-    number: 150
+    number: 50

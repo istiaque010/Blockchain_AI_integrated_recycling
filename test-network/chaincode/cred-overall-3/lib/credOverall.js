@@ -64,51 +64,51 @@ class VehicleLifecycleContract extends Contract {
     }
 
     // Helper function to auto-calculate degradation rate
-    calculateDegradationRate(expireDate) {
-        const today = new Date();
+    calculateDegradationRate(expireDate, referenceDate) {
         const expiry = new Date(expireDate);
-        const timeDiff = expiry - today;
-        const totalLifespan = expiry - (new Date(expiry.getFullYear() - 10, expiry.getMonth(), expiry.getDate())); // Assume 10-year lifespan
+        const reference = new Date(referenceDate); // Use passed-in date
+        const timeDiff = expiry - reference;
+        const totalLifespan = expiry - new Date(expiry.getFullYear() - 10, expiry.getMonth(), expiry.getDate());
         return ((totalLifespan - timeDiff) / totalLifespan) * 100;
     }
+    
 
     // Register a new vehicle by manufacturer with unitId support
-   async RegisterVehicle(ctx, vehicleDidNo, manufacturerDidNo, partSupplierDidNo, dealerDidNo, parts) {
-    const parsedParts = JSON.parse(parts);
-    const unitIds = parsedParts.map(part => part.unitId); // Collect all unit IDs
-
-    // Auto-calculate degradation rates for parts and initialize materials for battery parts
-    parsedParts.forEach(part => {
-        part.degradationRate = this.calculateDegradationRate(part.expireDate);
-        if (part.partType === 'Battery') {
-            part.materials = [
-                { material: 'Lithium', percentage: 40 },
-                { material: 'Nickel', percentage: 30 },
-                { material: 'Cobalt', percentage: 20 },
-                { material: 'Manganese', percentage: 10 }
-            ];
-        }
-    });
-
-    const vehicle = {
-        vehicleDidNo,
-        manufacturerDidNo,
-        partSupplierDidNo,
-        consumerDidNo: '',
-        dealerDidNo,
-        recyclingFacilityDidNo: '',
-        status: 'Manufactured',
-        complianceStatus: 'Pending',
-        controllerId: `controller_${vehicleDidNo}`, // Generate a controller ID
-        parts: parsedParts,
-        tokens: 0,
-        reputation: 0,
-        referenceHash: this.calculateHash(unitIds) // Store initial hash
-    };
-
-    await ctx.stub.putState(vehicleDidNo, Buffer.from(JSON.stringify(vehicle)));
-    return JSON.stringify(vehicle);
-}
+    async RegisterVehicle(ctx, vehicleDidNo, manufacturerDidNo, partSupplierDidNo, dealerDidNo, parts, referenceDate) {
+        const parsedParts = JSON.parse(parts);
+        const unitIds = parsedParts.map(part => part.unitId);
+    
+        parsedParts.forEach(part => {
+            part.degradationRate = this.calculateDegradationRate(part.expireDate, referenceDate);
+            if (part.partType === 'Battery') {
+                part.materials = [
+                    { material: 'Lithium', percentage: 40 },
+                    { material: 'Nickel', percentage: 30 },
+                    { material: 'Cobalt', percentage: 20 },
+                    { material: 'Manganese', percentage: 10 }
+                ];
+            }
+        });
+    
+        const vehicle = {
+            vehicleDidNo,
+            manufacturerDidNo,
+            partSupplierDidNo,
+            consumerDidNo: '',
+            dealerDidNo,
+            recyclingFacilityDidNo: '',
+            status: 'Manufactured',
+            complianceStatus: 'Pending',
+            controllerId: `controller_${vehicleDidNo}`,
+            parts: parsedParts,
+            tokens: 0,
+            reputation: 0,
+            referenceHash: this.calculateHash(unitIds)
+        };
+    
+        await ctx.stub.putState(vehicleDidNo, Buffer.from(JSON.stringify(vehicle)));
+        return JSON.stringify(vehicle);
+    }    
 
 
     // Update vehicle compliance status

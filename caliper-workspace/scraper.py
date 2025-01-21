@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import os
 
-modules1 = ['addDID', 'addIssuer', 'createCred', 'delegateRight', 'verifyCred']
+modules1 = ['RegisterVehicle', 'SellVehicle', 'UpdateMaintenance', 'RequestPartsReplacement', 'VerifyUnitIntegrity', 'RewardRecycler']
 workersCounts = [25, 50, 75, 100, 125, 150]  
 rounds = [i for i in range(2)]  
 

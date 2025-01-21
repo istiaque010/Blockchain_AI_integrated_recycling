@@ -13,7 +13,7 @@ fname = "./benchmarks/myAssetBenchmark.yaml"
 with open(fname, 'r') as stream:
     data = yaml.load(stream, Loader=yaml.FullLoader)
 
-modules1 = ['addDID', 'addIssuer', 'createCred', 'delegateRight', 'verifyCred']
+modules1 = ['RegisterVehicle', 'SellVehicle', 'UpdateMaintenance', 'RequestPartsReplacement', 'VerifyUnitIntegrity', 'RewardRecycler']
 attributeCounts = [4,16,32,64,128]  # Number of attributes to test with
 
 for module1 in modules1:

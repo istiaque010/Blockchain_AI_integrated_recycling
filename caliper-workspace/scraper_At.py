@@ -2,9 +2,9 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import os
 
-modules1 = ['addDID', 'addIssuer', 'createCred', 'delegateRight', 'verifyCred']
-attributeCounts = [4,16,32,64,128]  # Number of attributes to test with
-rounds = [i for i in range(3)]  
+modules1 = ['RegisterVehicle', 'SellVehicle', 'UpdateMaintenance', 'RequestPartsReplacement', 'VerifyUnitIntegrity', 'RewardRecycler']
+attributeCounts = [4, 16, 32, 64, 128]  # Number of attributes to test with
+rounds = [i for i in range(3)]
 
 maindict_latency = {}
 
@@ -23,8 +23,13 @@ for attributes in attributeCounts:
                 contents = HTMLFileToBeOpened.read()
                 beautifulSoupText = BeautifulSoup(contents, 'lxml')
                 vals = beautifulSoupText.find_all('td')
-
-                templistl.append(float(vals[6].text.strip()))  
+                
+                try:
+                    value = vals[6].text.strip()
+                    value = float(value) if value != "-" else 0.0  # Handle '-' as 0.0
+                    templistl.append(value)
+                except (ValueError, IndexError) as e:
+                    print(f"Skipping invalid or missing value in file {filename}: {e}")
         
         if templistl:
             avg_module_latency = sum(templistl) / len(templistl)
