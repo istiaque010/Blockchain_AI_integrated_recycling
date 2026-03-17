@@ -1,1 +1,1 @@
-# Blockchain_AI_integrated_recycling
+# Blockchain_AI_integrated_recycling 2025
